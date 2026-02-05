@@ -70,7 +70,7 @@ export interface RiotChampionDetail extends RiotChampion {
 export interface ProBuild {
   items: string[];
   runes: string;
-  skillOrder: string[];
+  skillOrder?: string[];
 }
 
 export interface RiotChampionSkin {

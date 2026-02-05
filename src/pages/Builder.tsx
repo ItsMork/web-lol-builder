@@ -182,7 +182,7 @@ export default function Builder() {
                       {/* Q W E R */}
                       {champDetail.spells.map((spell, i) => {
                         const hotkey = ["Q", "W", "E", "R"][i];
-                        const isPriority = build.skillOrder[0] === hotkey; // Je to první skill na maxování?
+                        const isPriority = (build.skillOrder || ["Q", "W", "E"])[0] === hotkey;
                         return (
                           <Tooltip key={spell.id}>
                             <TooltipTrigger>
@@ -205,7 +205,7 @@ export default function Builder() {
                     {/* Skill Order Text */}
                     <div className="flex items-center gap-3 bg-orange-500/10 p-3 rounded border border-orange-500/20">
                       <span className="text-orange-500 font-bold">Skill Priority:</span>
-                      {build.skillOrder.map((key, i) => (
+                      {(build.skillOrder || ["Q", "W", "E"]).map((key, i) => (
                         <div key={i} className="flex items-center gap-2">
                           <span className={`font-bold text-lg ${i === 0 ? "text-white" : "text-slate-400"}`}>{key}</span>
                           {i < 2 && <span className="text-slate-600">{'>'}</span>}

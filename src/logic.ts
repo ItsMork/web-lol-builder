@@ -51,12 +51,23 @@ export function findChampion(name: string, allChampions: Record<string, RiotCham
 
 // HLAVNÍ LOGIKA
 export function getRecommendedBuild(champ: RiotChampion): ProBuild {
-  // Výchozí hodnoty
+  // 1. Výchozí hodnoty
   let items = ["Boots", "Health Potion"];
   let runes = "Conqueror + Domination";
-  let skillOrder = ["Q", "E", "W"]; // Výchozí pořadí kouzel
+  let skillOrder = ["Q", "E", "W"]; // Základní pořadí
 
-  // 1. ZKUSÍME NAJÍT PŘESNÝ BUILD V SOUBORU
+  // 2. Odhadneme Skill Order podle role (pokud nebude v build souboru)
+  if (champ.tags.includes("Marksman")) {
+    skillOrder = ["Q", "W", "E"];
+  } else if (champ.tags.includes("Mage")) {
+    skillOrder = ["Q", "E", "W"];
+  } else if (champ.tags.includes("Support")) {
+    skillOrder = ["E", "W", "Q"];
+  } else if (champ.tags.includes("Tank")) {
+    skillOrder = ["Q", "W", "E"];
+  }
+
+  // 3. Zkusíme najít PŘESNÝ build v tvém souboru
   const champId = champ.id; 
   const champNameClean = champ.name.replace(/[^a-zA-Z]/g, ""); 
 
@@ -64,11 +75,17 @@ export function getRecommendedBuild(champ: RiotChampion): ProBuild {
   const specificBuild = exactBuilds[champId] || exactBuilds[champNameClean] || exactBuilds[champ.name];
 
   if (specificBuild) {
-    // Pokud máme přesný build, použijeme ho
+    // A) Našli jsme build v souboru -> Použijeme ho
     items = specificBuild.items;
-    runes = fixRuneName(specificBuild.runes); // Opravíme název runy pro obrázky
+    runes = fixRuneName(specificBuild.runes); // Opravíme runu pro obrázky
+
+    // Pokud má soubor vlastní skillOrder, použijeme ten (přepíše náš odhad)
+    if (specificBuild.skillOrder) {
+      skillOrder = specificBuild.skillOrder;
+    }
+
   } else {
-    // 2. POKUD NEMÁME BUILD, POUŽIJEME ODHAD PODLE ROLE (Záloha)
+    // B) Nenašli jsme build -> Použijeme univerzální logiku podle role (Záloha)
     if (champ.tags.includes("Marksman")) {
       items = ["Kraken Slayer", "Infinity Edge", "Berserker's Greaves", "Lord Dominik's Regards", "Bloodthirster", "Guardian Angel"];
       runes = "Lethal Tempo + Precision";
@@ -88,18 +105,6 @@ export function getRecommendedBuild(champ: RiotChampion): ProBuild {
       items = ["Sundered Sky", "Plated Steelcaps", "Black Cleaver", "Sterak's Gage", "Death's Dance", "Guardian Angel"];
       runes = "Conqueror + Resolve";
     }
-  }
-
-  // 3. LOGIKA PRO SKILL ORDER (Kouzla)
-  // Protože v championBuilds.ts nemáme skillOrder, určíme ho podle role
-  if (champ.tags.includes("Marksman")) {
-    skillOrder = ["Q", "W", "E"]; // Většina ADC maxuje Q pak W
-  } else if (champ.tags.includes("Mage")) {
-    skillOrder = ["Q", "E", "W"]; // Většina Mágů maxuje Q pak E
-  } else if (champ.tags.includes("Support")) {
-    skillOrder = ["E", "W", "Q"]; // Supporti často maxují štíty/healy
-  } else {
-    skillOrder = ["Q", "E", "W"]; // Univerzální
   }
 
   // Speciální výjimka pro Yasuo/Yone (aby to sedělo perfektně)
