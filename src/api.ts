@@ -1,21 +1,21 @@
-import type { RiotChampion } from './types';
+import { RiotChampion, RiotItem, RiotChampionDetail } from './types';
 
-// Odkaz na oficiální Riot API (verze 13.1.1)
-const RIOT_API_URL = 'https://ddragon.leagueoflegends.com/cdn/13.1.1/data/en_US/champion.json';
-
+// Funkce pro stahování šampionů (tu už jsi tam měl)
 export async function fetchAllChampions(): Promise<Record<string, RiotChampion>> {
-    try {
-        console.log("Stahuji data šampionů z Riot API...");
-        const response = await fetch(RIOT_API_URL);
-        
-        if (!response.ok) {
-            throw new Error(`Chyba sítě: ${response.status}`);
-        }
+  const response = await fetch("https://ddragon.leagueoflegends.com/cdn/14.2.1/data/en_US/champion.json");
+  const data = await response.json();
+  return data.data;
+}
 
-        const json = await response.json() as any;
-        // Riot vrací data uvnitř vlastnosti "data"
-        return json.data;
-    } catch (error) {
-        throw new Error(`Nepodařilo se načíst data: ${error instanceof Error ? error.message : 'Neznámá chyba'}`);
-    }
+// NOVÁ FUNKCE PRO STAHOVÁNÍ ITEMŮ (Tohle ti tam chybělo)
+export async function fetchAllItems(): Promise<Record<string, RiotItem>> {
+  const response = await fetch("https://ddragon.leagueoflegends.com/cdn/14.2.1/data/en_US/item.json");
+  const data = await response.json();
+  return data.data;
+}
+
+export async function fetchChampionDetail(id: string): Promise<RiotChampionDetail> {
+  const response = await fetch(`https://ddragon.leagueoflegends.com/cdn/14.2.1/data/en_US/champion/${id}.json`);
+  const data = await response.json();
+  return data.data[id];
 }

@@ -1,126 +1,111 @@
-import type { ProBuild, RiotChampion } from './types';
-import { exactBuilds } from './championBuilds';
+import { RiotChampion, ProBuild } from './types';
+import { exactBuilds } from './championBuilds'; // Načteme tvůj soubor s buildy
 
-// 1. Funkce na opravu jména (pomocná)
-export function formatName(name: string): string {
-    if (!name) return "";
-    return name.trim()
-               .replace(/[' .]/g, '')
-               .toLowerCase()
-               .split(' ')
-               .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-               .join(''); 
+// Pomocná mapa pro automatické doplnění stromu (aby fungovaly obrázky)
+const RUNE_TREES: Record<string, string> = {
+  // Precision
+  "Conqueror": "Precision",
+  "Lethal Tempo": "Precision",
+  "Press the Attack": "Precision",
+  "Fleet Footwork": "Precision",
+  // Domination
+  "Electrocute": "Domination",
+  "Dark Harvest": "Domination",
+  "Hail of Blades": "Domination",
+  "Predator": "Domination",
+  // Sorcery
+  "Summon Aery": "Sorcery",
+  "Arcane Comet": "Sorcery",
+  "Phase Rush": "Sorcery",
+  // Resolve
+  "Grasp of the Undying": "Resolve",
+  "Aftershock": "Resolve",
+  "Guardian": "Resolve",
+  // Inspiration
+  "Glacial Augment": "Inspiration",
+  "First Strike": "Inspiration",
+  "Unsealed Spellbook": "Inspiration"
+};
+
+// Funkce, která "opraví" název runy (přidá k ní strom)
+function fixRuneName(runeName: string): string {
+  // Pokud už tam plus je, nic neděláme
+  if (runeName.includes("+")) return runeName;
+
+  // Jinak najdeme správný strom a přidáme ho
+  const tree = RUNE_TREES[runeName];
+  if (tree) {
+    return `${runeName} + ${tree}`;
+  }
+  return runeName; // Kdybychom strom nenašli, vrátíme původní text
 }
 
-// 2. Funkce na hledání šampiona (TATO TI CHYBĚLA)
-export function findChampion(input: string, allData: Record<string, RiotChampion>): RiotChampion | undefined {
-    const cleanInput = input.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const foundKey = Object.keys(allData).find(key => 
-        key.toLowerCase() === cleanInput
-    );
-    if (foundKey) return allData[foundKey];
-    return undefined;
+// Funkce pro hledání šampiona
+export function findChampion(name: string, allChampions: Record<string, RiotChampion>): RiotChampion | undefined {
+  const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return Object.values(allChampions).find(c => 
+    c.name.toLowerCase().replace(/[^a-z0-9]/g, "") === cleanName ||
+    c.id.toLowerCase() === cleanName
+  );
 }
 
-// 3. Hlavní logika pro 6 itemů
-export function getRecommendedBuild(champion: RiotChampion): ProBuild {
-    
-    // Přednost má manuální seznam
-    const knownBuild = exactBuilds[champion.id];
-    if (knownBuild) return knownBuild;
+// HLAVNÍ LOGIKA
+export function getRecommendedBuild(champ: RiotChampion): ProBuild {
+  // Výchozí hodnoty
+  let items = ["Boots", "Health Potion"];
+  let runes = "Conqueror + Domination";
+  let skillOrder = ["Q", "E", "W"]; // Výchozí pořadí kouzel
 
-    // Automatická logika
-    const tags = champion.tags;
-    const stats = champion.stats;
-    const resource = champion.partype; 
+  // 1. ZKUSÍME NAJÍT PŘESNÝ BUILD V SOUBORU
+  const champId = champ.id; 
+  const champNameClean = champ.name.replace(/[^a-zA-Z]/g, ""); 
 
-    // --- MAGES ---
-    if (tags.includes("Mage")) {
-        if (tags.includes("Support")) {
-            return { 
-                runes: "Summon Aery", 
-                items: ["Ionian Boots of Lucidity", "Zaz'Zak's Realmspike", "Imperial Mandate", "Rylai's Crystal Scepter", "Morellonomicon", "Vigilant Wardstone"] 
-            };
-        }
-        if (resource !== "Mana") {
-            return { 
-                runes: "Conqueror", 
-                items: ["Sorcerer's Shoes", "Riftmaker", "Liandry's Torment", "Zhonya's Hourglass", "Rabadon's Deathcap", "Void Staff"] 
-            };
-        }
-        return { 
-            runes: "Arcane Comet", 
-            items: ["Sorcerer's Shoes", "Luden's Companion", "Shadowflame", "Zhonya's Hourglass", "Rabadon's Deathcap", "Void Staff"] 
-        };
+  // Hledáme podle ID nebo jména
+  const specificBuild = exactBuilds[champId] || exactBuilds[champNameClean] || exactBuilds[champ.name];
+
+  if (specificBuild) {
+    // Pokud máme přesný build, použijeme ho
+    items = specificBuild.items;
+    runes = fixRuneName(specificBuild.runes); // Opravíme název runy pro obrázky
+  } else {
+    // 2. POKUD NEMÁME BUILD, POUŽIJEME ODHAD PODLE ROLE (Záloha)
+    if (champ.tags.includes("Marksman")) {
+      items = ["Kraken Slayer", "Infinity Edge", "Berserker's Greaves", "Lord Dominik's Regards", "Bloodthirster", "Guardian Angel"];
+      runes = "Lethal Tempo + Precision";
+    } else if (champ.tags.includes("Mage")) {
+      items = ["Luden's Companion", "Sorcerer's Shoes", "Shadowflame", "Rabadon's Deathcap", "Zhonya's Hourglass", "Void Staff"];
+      runes = "Arcane Comet + Inspiration";
+    } else if (champ.tags.includes("Assassin")) {
+      items = ["Youmuu's Ghostblade", "Opportunity", "Ionian Boots of Lucidity", "Serylda's Grudge", "Axiom Arc", "Edge of Night"];
+      runes = "Electrocute + Precision";
+    } else if (champ.tags.includes("Tank")) {
+      items = ["Heartsteel", "Sunfire Aegis", "Plated Steelcaps", "Thornmail", "Kaenic Rookern", "Jak'Sho, The Protean"];
+      runes = "Grasp of the Undying + Inspiration";
+    } else if (champ.tags.includes("Support")) {
+      items = ["Dream Maker", "Ionian Boots of Lucidity", "Moonstone Renewer", "Redemption", "Ardent Censer", "Dawncore"];
+      runes = "Summon Aery + Resolve";
+    } else if (champ.tags.includes("Fighter")) {
+      items = ["Sundered Sky", "Plated Steelcaps", "Black Cleaver", "Sterak's Gage", "Death's Dance", "Guardian Angel"];
+      runes = "Conqueror + Resolve";
     }
+  }
 
-    // --- MARKSMAN ---
-    if (tags.includes("Marksman")) {
-        if (resource === "Mana" && stats.attackrange < 550) {
-            return { 
-                runes: "Press the Attack", 
-                items: ["Ionian Boots of Lucidity", "Trinity Force", "Manamune", "Spear of Shojin", "Ravenous Hydra", "Guardian Angel"] 
-            };
-        }
-        return { 
-            runes: "Lethal Tempo", 
-            items: ["Berserker's Greaves", "Kraken Slayer", "Infinity Edge", "Lord Dominik's Regards", "Bloodthirster", "Guardian Angel"] 
-        };
-    }
+  // 3. LOGIKA PRO SKILL ORDER (Kouzla)
+  // Protože v championBuilds.ts nemáme skillOrder, určíme ho podle role
+  if (champ.tags.includes("Marksman")) {
+    skillOrder = ["Q", "W", "E"]; // Většina ADC maxuje Q pak W
+  } else if (champ.tags.includes("Mage")) {
+    skillOrder = ["Q", "E", "W"]; // Většina Mágů maxuje Q pak E
+  } else if (champ.tags.includes("Support")) {
+    skillOrder = ["E", "W", "Q"]; // Supporti často maxují štíty/healy
+  } else {
+    skillOrder = ["Q", "E", "W"]; // Univerzální
+  }
 
-    // --- ASSASSIN ---
-    if (tags.includes("Assassin")) {
-        if (stats.attackdamage < 60) { 
-             return { 
-                 runes: "Electrocute", 
-                 items: ["Sorcerer's Shoes", "Lich Bane", "Shadowflame", "Zhonya's Hourglass", "Rabadon's Deathcap", "Banshee's Veil"] 
-             };
-        }
-        return { 
-            runes: "Electrocute", 
-            items: ["Ionian Boots of Lucidity", "Voltaic Cyclosword", "Youmuu's Ghostblade", "Serylda's Grudge", "Edge of Night", "Guardian Angel"] 
-        };
-    }
+  // Speciální výjimka pro Yasuo/Yone (aby to sedělo perfektně)
+  if (champ.name === "Yasuo" || champ.name === "Yone") {
+    skillOrder = ["Q", "E", "W"];
+  }
 
-    // --- TANK ---
-    if (tags.includes("Tank")) {
-        if (tags.includes("Support")) {
-            return { 
-                runes: "Glacial Augment", 
-                items: ["Boots of Swiftness", "Celestial Opposition", "Knight's Vow", "Zeke's Convergence", "Thornmail", "Abyssal Mask"] 
-            };
-        }
-        return { 
-            runes: "Grasp of the Undying", 
-            items: ["Plated Steelcaps", "Heartsteel", "Sunfire Aegis", "Thornmail", "Spirit Visage", "Warmog's Armor"] 
-        };
-    }
-
-    // --- FIGHTER ---
-    if (tags.includes("Fighter")) {
-        if (stats.attackspeed > 0.67) {
-            return { 
-                runes: "Lethal Tempo", 
-                items: ["Berserker's Greaves", "Blade of the Ruined King", "Guinsoo's Rageblade", "Wit's End", "Death's Dance", "Guardian Angel"] 
-            };
-        }
-        return { 
-            runes: "Conqueror", 
-            items: ["Plated Steelcaps", "Sundered Sky", "Black Cleaver", "Sterak's Gage", "Death's Dance", "Spirit Visage"] 
-        };
-    }
-
-    // --- SUPPORT ---
-    if (tags.includes("Support")) {
-        return { 
-            runes: "Summon Aery", 
-            items: ["Ionian Boots of Lucidity", "Dream Maker", "Moonstone Renewer", "Redemption", "Ardent Censer", "Mikael's Blessing"] 
-        };
-    }
-
-    // --- OSTATNÍ ---
-    return { 
-        runes: "Conqueror", 
-        items: ["Plated Steelcaps", "Trinity Force", "Sterak's Gage", "Black Cleaver", "Death's Dance", "Guardian Angel"] 
-    };
+  return { items, runes, skillOrder };
 }
